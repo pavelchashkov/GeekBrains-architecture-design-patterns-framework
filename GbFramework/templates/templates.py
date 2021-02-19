@@ -1,7 +1,9 @@
-import os
-from jinja2 import Template
+from jinja2 import Template, FileSystemLoader
+from jinja2.environment import Environment
+
 
 def render(name, folder='templates', **kwargs):
-    with open(os.path.join(folder, f'{name}.html'), encoding='utf-8') as f:
-        templ = Template(f.read())
-    return templ.render(**kwargs)
+    env = Environment()
+    env.loader = FileSystemLoader(folder)
+    tmpl = env.get_template(f'{name}.html')
+    return tmpl.render(**kwargs)
