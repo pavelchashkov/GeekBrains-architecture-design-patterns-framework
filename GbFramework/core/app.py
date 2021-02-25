@@ -1,4 +1,5 @@
 import quopri
+from wsgiref.util import setup_testing_defaults
 
 def not_found_404_view(request):
     return '404 WHAT', '404 PAGE Not Found'
@@ -16,12 +17,13 @@ class WebApp:
         self.env = None
 
     def __call__(self, env, start_response):
+        setup_testing_defaults(env)
         self.env = env
         
-        print('*'*60)
-        for k, v in self.env.items():
-            print(f'{k} - {v}')
-        print('*'*60)
+        # print('*'*60)
+        # for k, v in self.env.items():
+        #     print(f'{k} - {v}')
+        # print('*'*60)
         
         path = self.env[ENV_KEY_PATH_INFO]
         if not path.endswith('/'):
@@ -54,7 +56,10 @@ class WebApp:
         return val_decode_str.decode('UTF-8')
 
     def get_wsgi_input_data(self) -> bytes:
-        content_length = int(self.env.get(ENV_KEY_CONTENT_LENGTH, 0))
+        try:
+            content_length = int(self.env.get(ENV_KEY_CONTENT_LENGTH, 0))
+        except ValueError:
+            content_length = 0
         input_data = self.env[ENV_KEY_WSGI_INPUT].read(content_length)
         return input_data
 
