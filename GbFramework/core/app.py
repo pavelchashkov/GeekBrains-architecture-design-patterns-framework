@@ -1,5 +1,6 @@
 import quopri
 from wsgiref.util import setup_testing_defaults
+from .singletones import SingletonByName
 
 def not_found_404_view(request):
     return '404 WHAT', '404 PAGE Not Found'
@@ -10,20 +11,16 @@ ENV_KEY_QUERY_STRING = 'QUERY_STRING'
 ENV_KEY_CONTENT_LENGTH = 'CONTENT_LENGTH'
 ENV_KEY_WSGI_INPUT = 'wsgi.input'
 
-class WebApp:
-    def __init__(self, routes={}, front_controllers=[]):
-        self.routes = routes
+class WebApp(metaclass=SingletonByName):
+    def __init__(self, name, front_controllers=[]):
+        self.name = name
+        self.routes = {}
         self.front_controllers = front_controllers
         self.env = None
 
     def __call__(self, env, start_response):
         setup_testing_defaults(env)
         self.env = env
-        
-        # print('*'*60)
-        # for k, v in self.env.items():
-        #     print(f'{k} - {v}')
-        # print('*'*60)
         
         path = self.env[ENV_KEY_PATH_INFO]
         if not path.endswith('/'):
@@ -39,7 +36,6 @@ class WebApp:
             'data': request_data,
             'params': request_params
         }
-        print(request)
         
         view = self.routes.get(path, not_found_404_view)
         
@@ -49,6 +45,12 @@ class WebApp:
         
         start_response(code, [('Content-Type', 'text/html')])
         return [body.encode('utf-8')]
+
+    
+    def add_route(self, url):
+        def inner(view):
+            self.routes[url] = view
+        return inner
 
     def decode_value(self, val: str) -> str:
         val_b = bytes(val.replace('%', '=').replace("+", " "), 'UTF-8')
