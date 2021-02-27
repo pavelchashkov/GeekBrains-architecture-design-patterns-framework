@@ -1,2 +1,2 @@
-from .core import WebApp, SingletonByName
+from .core import WebApp, DebugWebApp, FakeWebApp, SingletonByName
 from .templates import render

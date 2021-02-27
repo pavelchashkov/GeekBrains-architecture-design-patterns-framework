@@ -80,3 +80,20 @@ class WebApp(metaclass=SingletonByName):
                 k, v = p.split('=')
                 result[k] = self.decode_value(v)
         return result
+
+# Логирующий WSGI-application.
+# Такой же, как основной, только для каждого запроса 
+# выводит информацию (тип запроса и параметры) в консоль.
+class DebugWebApp(WebApp):
+    def __call__(self, env, start_response):
+        print('DEBUG MODE')
+        print(env)
+        return super().__call__(env, start_response)
+
+# Фейковый WSGI-application.
+# Второй — фейковый (на все запросы пользователя отвечает:
+# 200 OK, Hello from Fake).
+class FakeWebApp(WebApp):
+    def __call__(self, env, start_response):
+        start_response('200 OK', [('Content-Type', 'text/html')])
+        return [b'Hello from Fake']
