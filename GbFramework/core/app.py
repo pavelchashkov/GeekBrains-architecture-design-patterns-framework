@@ -1,4 +1,6 @@
 import quopri
+from wsgiref.util import setup_testing_defaults
+from .singletones import SingletonByName
 
 def not_found_404_view(request):
     return '404 WHAT', '404 PAGE Not Found'
@@ -9,19 +11,16 @@ ENV_KEY_QUERY_STRING = 'QUERY_STRING'
 ENV_KEY_CONTENT_LENGTH = 'CONTENT_LENGTH'
 ENV_KEY_WSGI_INPUT = 'wsgi.input'
 
-class WebApp:
-    def __init__(self, routes={}, front_controllers=[]):
-        self.routes = routes
+class WebApp(metaclass=SingletonByName):
+    def __init__(self, name, front_controllers=[]):
+        self.name = name
+        self.routes = {}
         self.front_controllers = front_controllers
         self.env = None
 
     def __call__(self, env, start_response):
+        setup_testing_defaults(env)
         self.env = env
-        
-        print('*'*60)
-        for k, v in self.env.items():
-            print(f'{k} - {v}')
-        print('*'*60)
         
         path = self.env[ENV_KEY_PATH_INFO]
         if not path.endswith('/'):
@@ -37,7 +36,6 @@ class WebApp:
             'data': request_data,
             'params': request_params
         }
-        print(request)
         
         view = self.routes.get(path, not_found_404_view)
         
@@ -48,13 +46,22 @@ class WebApp:
         start_response(code, [('Content-Type', 'text/html')])
         return [body.encode('utf-8')]
 
+    
+    def add_route(self, url):
+        def inner(view):
+            self.routes[url] = view
+        return inner
+
     def decode_value(self, val: str) -> str:
         val_b = bytes(val.replace('%', '=').replace("+", " "), 'UTF-8')
         val_decode_str = quopri.decodestring(val_b)
         return val_decode_str.decode('UTF-8')
 
     def get_wsgi_input_data(self) -> bytes:
-        content_length = int(self.env.get(ENV_KEY_CONTENT_LENGTH, 0))
+        try:
+            content_length = int(self.env.get(ENV_KEY_CONTENT_LENGTH, 0))
+        except ValueError:
+            content_length = 0
         input_data = self.env[ENV_KEY_WSGI_INPUT].read(content_length)
         return input_data
 
@@ -73,3 +80,20 @@ class WebApp:
                 k, v = p.split('=')
                 result[k] = self.decode_value(v)
         return result
+
+# Логирующий WSGI-application.
+# Такой же, как основной, только для каждого запроса 
+# выводит информацию (тип запроса и параметры) в консоль.
+class DebugWebApp(WebApp):
+    def __call__(self, env, start_response):
+        print('DEBUG MODE')
+        print(env)
+        return super().__call__(env, start_response)
+
+# Фейковый WSGI-application.
+# Второй — фейковый (на все запросы пользователя отвечает:
+# 200 OK, Hello from Fake).
+class FakeWebApp(WebApp):
+    def __call__(self, env, start_response):
+        start_response('200 OK', [('Content-Type', 'text/html')])
+        return [b'Hello from Fake']
