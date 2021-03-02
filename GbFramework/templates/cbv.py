@@ -39,3 +39,27 @@ class ListView(TemplateView):
         queryset = self.get_queryset()
         context_object_name = self.get_context_object_name()
         return {context_object_name: queryset}
+
+class CreateView(TemplateView):
+    template_name = 'create.html'
+
+    def get_request_data(self, request: dict) -> dict:
+        return request['data']
+
+    def create_obj(self, data: dict):
+        pass
+
+    def render_post(self, request):
+        return self.render_template()
+    
+    def render_get(self, request):
+        return self.render_template()
+
+    def __call__(self, request):
+        method = request['method']
+        if method == 'POST':
+            data = self.get_request_data(request)
+            self.create_obj(data)
+            return self.render_post(request)
+        else:
+            return self.render_get(request)
