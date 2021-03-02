@@ -6,7 +6,7 @@ class SingletonByName(type):
     def __call__(cls, *args, **kwargs):
         if args:
             name = args[0]
-        if kwargs:
+        elif kwargs:
             name = kwargs['name']
 
         if name in cls.__instance:
